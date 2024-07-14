@@ -25,40 +25,35 @@ def index():
     return "<h1>Code challenge</h1>"
 
 
-@app.route('/restaurants', methods= ['GET'])
-def get_restaurants():
-    restaurants = Restaurant.query.all()
-    restaurant_data = [restaurant.to_dict() for restaurant in restaurants]
-    return jsonify(restaurant_data), 200
+class Restaurants(Resource):
+    def get(self):
+        restaurants = [n.to_dict() for n in Restaurant.query.all()]
 
-@app.route('/restaurants/<int:id>', methods=['GET'])
-def get_restaurant(id):
-    restaurant = db.session.get(Restaurant, id)
-    if restaurant:
-        restaurant_data = restaurant.to_dict()
-        restaurant_data['restaurant_pizzas'] = [
-            {
-                "id": rp.id,
-                "pizza_id": rp.pizza_id,
-                "price": rp.price,
-                'restaurant_id': rp.restaurant_id,
-                "pizza": rp.pizza.to_dict()
-            } for rp in restaurant.restaurant_pizzas
-        ]
-        return jsonify(restaurant_data), 200
-    else:
-        return jsonify({"error": "Restaurant not found"}), 404
+        for hero in restaurants:
+            hero.pop('restaurant_pizzas', None)
+
+        return make_response(restaurants, 200)
+
+
+
+class RestaurantById(Resource):
+    def get(self, id):
+        restaurant = Restaurant.query.filter_by(id=id).first()
+        if restaurant is None:
+            return {"error": "Restaurant not found"}, 404
+        else:
+            response_dict = restaurant.to_dict()
+            return response_dict, 200
     
-@app.route('/restaurants/<int:id>', methods= ['DELETE'])
-def delete_restaurant(id):
-    restaurant = db.session.get(Restaurant, id)
-    if restaurant:
+        
+    def delete(self, id):
+        restaurant = Restaurant.query.filter_by(id=id).first()
+        if restaurant is None:
+            return {"error": "Restaurant not found"}, 404
+
         db.session.delete(restaurant)
         db.session.commit()
-        return make_response('', 204)
-    else:
-        return jsonify({"error": "Restaurant not found"}), 404
-    
+        return {'message': 'Restaurant deleted succesfullly'},204
 
     
 @app.route('/pizzas', methods= ['GET'])
@@ -86,10 +81,13 @@ class RestaurantPizzasResource(Resource):
         except Exception as e:
             return {"errors": ["validation errors"]}, 400
 
+
+api.add_resource(Restaurants, "/restaurants")
+api.add_resource(RestaurantById, "/restaurants/<int:id>")
 api.add_resource(RestaurantPizzasResource, "/restaurant_pizzas")
 
 
 
 if __name__ == "__main__":
-    app.run(port=5555, debug=True)
+    app.run(port=5000, debug=True)
 
